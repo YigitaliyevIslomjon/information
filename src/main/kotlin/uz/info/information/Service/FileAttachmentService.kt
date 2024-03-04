@@ -7,6 +7,7 @@ import org.springframework.stereotype.Service
 import org.springframework.util.FileCopyUtils
 import org.springframework.web.multipart.MultipartHttpServletRequest
 import uz.info.information.FileAttachment
+import uz.info.information.FileAttachmentDtoResponse
 import uz.info.information.FileAttachmentRepository
 import uz.info.information.FileNotFoundException
 import java.io.FileInputStream
@@ -15,7 +16,7 @@ import java.nio.file.Paths
 import java.util.*
 
 interface FileAttachmentService {
-    fun add(request: MultipartHttpServletRequest): UUID
+    fun add(request: MultipartHttpServletRequest): FileAttachmentDtoResponse
     fun getOne(id: UUID, response: HttpServletResponse)
 }
 
@@ -25,7 +26,7 @@ class FileAttachmentServiceImpl(
     @Value("\${saved-file-folder}") var savedFileFolder: String,
 ) : FileAttachmentService {
 
-    override fun add(request: MultipartHttpServletRequest): UUID {
+    override fun add(request: MultipartHttpServletRequest): FileAttachmentDtoResponse {
         val fileNames = request.fileNames
         val file = request.getFile(fileNames.next())
         val fileAttachment: FileAttachment
@@ -45,14 +46,13 @@ class FileAttachmentServiceImpl(
                 fileAttachment = fileAttachmentRepository.save(newAttachment)
                 val path = Paths.get("${savedFileFolder}/$name")
                 Files.copy(file.inputStream, path)
-                return fileAttachment.id!!
+                return FileAttachmentDtoResponse.toResponse(fileAttachment)
             } finally {
                 file.inputStream.close()
             }
         } else {
             throw FileNotFoundException("file is null")
         }
-
     }
 
     override fun getOne(id: UUID, response: HttpServletResponse) {

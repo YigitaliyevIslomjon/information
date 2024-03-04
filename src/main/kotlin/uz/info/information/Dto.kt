@@ -1,56 +1,66 @@
 package uz.info.information
 
-import jakarta.persistence.Column
-import jakarta.persistence.GeneratedValue
-import jakarta.persistence.GenerationType
-import jakarta.persistence.Id
-import org.springframework.web.multipart.MultipartFile
-import org.springframework.web.multipart.MultipartHttpServletRequest
+
+import jakarta.validation.constraints.NotBlank
+import jakarta.validation.constraints.NotEmpty
+import jakarta.validation.constraints.NotNull
+import jakarta.validation.constraints.Size
+
 import java.sql.Time
 import java.time.LocalDate
-import java.util.Date
 import java.util.UUID
 
 
 data class SignInDTO(
-    val username : String,
-    val password : String
+    @field:NotBlank
+    @field:Size(max = 50)
+    val username: String,
+    @field:NotBlank
+    val password: String
 )
 
-data class UserDto (
+data class UserDto(
+    @field:NotBlank
+    @field:Size(max = 50)
     val firstName: String,
+    @field:NotBlank
+    @field:Size(max = 50)
     val lastName: String,
+    @field:NotBlank
+    @field:Size(max = 50)
     var username: String,
+    @field:NotBlank
     var password: String,
+    @field:NotEmpty
     val roles: List<String>
 )
 
 data class FileAttachmentDtoResponse(
-
     val id: UUID,
-    val path: String,
-    val size: Long,
-    val contentType: String,
-    val originalFileName: String,
-    ){
+) {
     companion object {
         fun toResponse(fileAttachment: FileAttachment): FileAttachmentDtoResponse {
             return FileAttachmentDtoResponse(
                 fileAttachment.id!!,
-                fileAttachment.path,
-                fileAttachment.size,
-                fileAttachment.contentType,
-                fileAttachment.originalFileName
             )
         }
     }
 }
 
 data class FileGraphicDto(
+    @field: NotNull
     val fileId: UUID,
+    @field:NotBlank
     val title: String,
+    @field:NotEmpty
     val graphicTimes: List<Long>,
+    @field:NotNull
     val localDate: LocalDate
+)
+
+data class FileGraphicStatusDto(
+    @field: NotNull
+    val status: FileStatus,
 )
 
 data class FileGraphicDtoResponse(
@@ -59,8 +69,7 @@ data class FileGraphicDtoResponse(
     val status: FileStatus,
     val localDate: LocalDate,
     val fileAttachmentId: UUID,
-
-){
+) {
     companion object {
         fun toResponse(fileGraphic: FileGraphic): FileGraphicDtoResponse {
             return FileGraphicDtoResponse(
@@ -68,7 +77,29 @@ data class FileGraphicDtoResponse(
                 fileGraphic.title,
                 fileGraphic.status,
                 fileGraphic.localDate,
-                fileGraphic.fileAttachment.id!!
+                fileGraphic.fileAttachment.id!!,
+            )
+        }
+    }
+}
+
+data class FileGraphicOneDtoResponse(
+    val id: Long,
+    val title: String,
+    val status: FileStatus,
+    val localDate: LocalDate,
+    val fileAttachmentId: UUID,
+    val graphicItems: List<GraphicTime>
+) {
+    companion object {
+        fun toResponse(fileGraphic: FileGraphic, graphicItems: List<GraphicTime>): FileGraphicOneDtoResponse {
+            return FileGraphicOneDtoResponse(
+                fileGraphic.id!!,
+                fileGraphic.title,
+                fileGraphic.status,
+                fileGraphic.localDate,
+                fileGraphic.fileAttachment.id!!,
+                graphicItems
             )
         }
     }
@@ -76,18 +107,21 @@ data class FileGraphicDtoResponse(
 
 
 data class GraphicTimeDto(
+    @field:NotNull
     val time: Time
 )
 
 data class GraphicTimeDtoResponse(
     val id: Long,
-    val time: Time
+    val time: Time,
+    val delete: Boolean
 ) {
     companion object {
         fun toResponse(graphicTime: GraphicTime): GraphicTimeDtoResponse {
             return GraphicTimeDtoResponse(
                 graphicTime.id!!,
-                graphicTime.time
+                graphicTime.time,
+                graphicTime.delete
             )
         }
     }

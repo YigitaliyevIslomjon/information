@@ -22,7 +22,7 @@ class AuthController(
 ) {
 
     @PostMapping("sign-in")
-    fun login(): Result  = authService.signIn()
+    fun login(): Result = authService.signIn()
 
     @PostMapping("sign-up")
     fun userRegister(@Valid @RequestBody dto: UserDto): Result = authService.signUp(dto)
@@ -47,10 +47,8 @@ class GraphicTimeController(
     @PutMapping("{id}")
     fun edit(@PathVariable id: Long, @Valid @RequestBody dto: GraphicTimeDto): Result = graphicTimeService.edit(id, dto)
 
-    @GetMapping("pageable")
-    fun getAll(
-        pageable: Pageable
-    ): Page<GraphicTimeDtoResponse> = graphicTimeService.getAll(pageable)
+    @GetMapping("all")
+    fun getAll(): List<GraphicTimeDtoResponse> = graphicTimeService.getAll()
 }
 
 @RestController
@@ -64,11 +62,8 @@ class FileGraphicController(
         @Valid @RequestBody dto: FileGraphicDto,
     ) = fileGraphicService.add(dto)
 
-    @DeleteMapping("{id}")
-    fun delete(@PathVariable id: Long): Result = fileGraphicService.delete(id)
-
     @GetMapping("{id}")
-    fun getOne(@PathVariable id: Long): FileGraphicDtoResponse = fileGraphicService.getOne(id)
+    fun getOne(@PathVariable id: Long): FileGraphicOneDtoResponse = fileGraphicService.getOne(id)
 
     @PutMapping("{id}")
     fun edit(
@@ -78,13 +73,17 @@ class FileGraphicController(
 
     @GetMapping("pageable")
     fun getAll(
-        @RequestParam("status") fileStatus: FileStatus,
-        @RequestParam("startDate") startDate: LocalDate,@RequestParam("endDate") endDate:LocalDate,
+        @RequestParam("status") fileStatus: FileStatus?,
+        @RequestParam("startDate") startDate: LocalDate?, @RequestParam("endDate") endDate: LocalDate?,
         pageable: Pageable
-    ): Page<FileGraphicDtoResponse> = fileGraphicService.getAll(startDate,endDate, fileStatus, pageable)
+    ): Page<FileGraphicDtoResponse> = fileGraphicService.getAll(startDate, endDate, fileStatus, pageable)
 
-    @PutMapping
-    fun changeStatus(id: Long, status: FileStatus): Result = fileGraphicService.changeStatus(id, status)
+    @PutMapping("status/{id}")
+    fun changeStatus(@PathVariable id: Long, @Valid @RequestBody dto: FileGraphicStatusDto): Result = fileGraphicService.changeStatus(id, dto)
+
+    /*    @DeleteMapping("{id}")
+    fun delete(@PathVariable id: Long): Result = fileGraphicService.delete(id)*/
+
 }
 
 @RestController
@@ -96,7 +95,7 @@ class FileAttachmentController(
     @PostMapping("/add")
     fun add(
         request: MultipartHttpServletRequest
-    ) = fileAttachmentService.add(request)
+    ): FileAttachmentDtoResponse = fileAttachmentService.add(request)
 
     @GetMapping("{id}")
     fun getOne(@PathVariable id: UUID, request: HttpServletResponse) = fileAttachmentService.getOne(id, request)

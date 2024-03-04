@@ -1,6 +1,5 @@
 package uz.info.information.Service
 
-import org.springframework.security.core.userdetails.UsernameNotFoundException
 import org.springframework.security.crypto.password.PasswordEncoder
 import org.springframework.stereotype.Service
 import uz.info.information.*
@@ -17,12 +16,12 @@ class AuthServiceImpl(
     private var userRepository: UserRepository,
 ) : AuthService {
     override fun signIn(): Result = Result("user authenticated successfully")
-
     override fun signUp(dto: UserDto): Result = dto.run {
         val password = passwordEncoder.encode(dto.password)
-        userRepository.findByUsername(dto.username)
-            ?: throw UsernameNotFoundException("username ${dto.username} is not found")
-
+        val username = userRepository.findByUsername(dto.username)
+        if (username != null) {
+            throw UsernameExistException("username ${dto.username} is already exist, choose another username")
+        }
         userRepository.save(
             User(
                 dto.firstName,
@@ -31,6 +30,6 @@ class AuthServiceImpl(
                 dto.username,
             )
         )
-        return Result("data are saved")
+        return Result("data are saved successfully")
     }
 }

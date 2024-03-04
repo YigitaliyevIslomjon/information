@@ -38,7 +38,7 @@ class UserDetailsServiceImpl(private val userRepository: UserRepository) : UserD
     override fun loadUserByUsername(username: String): UserDetails {
         val user = userRepository.findByUsername(username)
             ?: throw UsernameNotFoundException("this kinda user not found")
-        return User(user.username, user.password, user.roles.map { SimpleGrantedAuthority(it) })
+        return User(user.username, user.password, user.roles.map { SimpleGrantedAuthority(it.name) })
     }
 }
 

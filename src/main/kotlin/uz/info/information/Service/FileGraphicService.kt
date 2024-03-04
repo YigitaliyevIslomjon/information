@@ -14,16 +14,18 @@ interface FileGraphicService {
         id: Long, dto: FileGraphicDto
     ): Result
 
-    fun delete(id: Long): Result
-    fun getOne(id: Long): FileGraphicDtoResponse
+    fun getOne(id: Long): FileGraphicOneDtoResponse
     fun getAll(
-        startDate: LocalDate,
-        endDate: LocalDate,
+        startDate: LocalDate?,
+        endDate: LocalDate?,
         status: FileStatus?,
         pageable: Pageable
     ): Page<FileGraphicDtoResponse>
 
-    fun changeStatus(id: Long, status: FileStatus): Result
+    fun changeStatus(id: Long, dto: FileGraphicStatusDto): Result
+    /*
+        fun delete(id: Long): Result
+    */
 }
 
 @Service
@@ -38,10 +40,13 @@ class FileGraphicServiceImpl(
     override fun add(
         dto: FileGraphicDto
     ): Result = dto.run {
-
         val fileAttachment = fileAttachmentRepository.findByIdOrNull(fileId)
             ?: throw FileNotFoundException("fileId $fileId is not present")
+        val existFileGraphicByAttachment = fileGraphicRepository.findByFileAttachment(fileAttachment)
 
+        if (existFileGraphicByAttachment != null) {
+            throw FileAlreadyConnectedGraphicException("file id ${fileAttachment.id} connected to graphic already, choose another file")
+        }
         val fileGraphic = FileGraphic(
             title,
             FileStatus.ACTIVE,
@@ -59,7 +64,7 @@ class FileGraphicServiceImpl(
             val existFileGraphicTime =
                 fileGraphicTimeRepository.existsByLocalDateAndAndGraphicTime(localDate, graphicTime)
             if (existFileGraphicTime) {
-                throw LocalDateAndGraphicTimeMustBeUniqueException("this kind of localDate and graphicTime is present")
+                throw LocalDateAndGraphicTimeMustBeUniqueException("this kind of localDate $localDate and graphicTime id ${graphicTime.id} is present")
             } else {
                 val fileGraphicTime = FileGraphicTime(
                     fileGraphic,
@@ -84,6 +89,12 @@ class FileGraphicServiceImpl(
         val fileAttachment = fileAttachmentRepository.findByIdOrNull(fileId)
             ?: throw FileNotFoundException("fileId $fileId is not present")
 
+        val existFileGraphicByAttachment = fileGraphicRepository.findByFileAttachment(fileAttachment)
+
+        if (existFileGraphicByAttachment != null && existFileGraphicByAttachment.id != fileGraphic.id) {
+            throw FileAlreadyConnectedGraphicException("file id ${fileAttachment.id} connected to graphic already, choose another file")
+        }
+
         val updatedFileGraphic = fileGraphic.also {
             it.title = title
             it.localDate = localDate
@@ -92,15 +103,14 @@ class FileGraphicServiceImpl(
 
         fileGraphicRepository.save(updatedFileGraphic)
 
-
-        val fileGraphicTime = fileGraphicTimeRepository.findByFileGraphic(updatedFileGraphic)
-            ?: throw FileGraphicNotException("File graphic id ${updatedFileGraphic.id} not found connected to file graphic time")
-
         graphicTimes.forEach {
             val graphicTime =
                 graphicTimeRepository.findByIdOrNull(it)
                     ?: throw GraphicTimeNotFoundException("graphicTime $it id not found")
 
+            if (graphicTime.delete) {
+                throw GraphicTimeDeletedException("this graphicTime id $id is deleted, remove this id from list")
+            }
 
             val connectedFileGraphicTime =
                 fileGraphicTimeRepository.findByFileGraphicAndGraphicTime(updatedFileGraphic, graphicTime)
@@ -116,72 +126,71 @@ class FileGraphicServiceImpl(
                     )
                     fileGraphicTimeRepository.save(newFileGraphicTime)
                 } else {
-                    throw LocalDateAndGraphicTimeMustBeUniqueException("choose another localdate, localdate and GraphicTime is present")
+                    throw LocalDateAndGraphicTimeMustBeUniqueException("choose another localDate, $localDate and GraphicTime id ${graphicTime.id}  is present")
                 }
-            }
-            else if (fileGraphicTime.localDate != localDate) {
+            } else if (connectedFileGraphicTime.localDate != localDate) {
                 val isExistFileGraphicTime =
                     fileGraphicTimeRepository.existsByLocalDateAndAndGraphicTime(localDate, graphicTime)
                 if (!isExistFileGraphicTime) {
-                    // update
                     fileGraphicTimeRepository.save(
-                        fileGraphicTime.also {item->
+                        connectedFileGraphicTime.also { item ->
                             item.fileGraphic = updatedFileGraphic
                             item.localDate = localDate
                             item.graphicTime = graphicTime
                         }
                     )
                 } else {
-                    throw LocalDateAndGraphicTimeMustBeUniqueException("choose another localDate, localdate and GraphicTime is present")
+                    throw LocalDateAndGraphicTimeMustBeUniqueException("choose another localDate, $localDate and GraphicTime id ${graphicTime.id}  is present")
                 }
             }
 
-            fileGraphicTimeRepository.save(
-                fileGraphicTime.apply {
-                    this.fileGraphic = updatedFileGraphic
-                }
-            )
-
-            val graphicTimes = fileGraphicTimeRepository
-                .findAllByFileGraphicAndGraphicTime_IdNotIn(fileGraphic, dto.graphicTimes)
-
+            val graphicTimes =
+                fileGraphicTimeRepository.findAllByFileGraphicAndGraphicTime_IdNotIn(fileGraphic.id!!, dto.graphicTimes)
             fileGraphicTimeRepository.deleteAll(graphicTimes)
         }
 
         return Result("data are edited successfully")
     }
 
-    override fun delete(id: Long): Result {
-        fileGraphicRepository.findByIdOrNull(id) ?: throw FileGraphicNotException("fileGraphic id ${id} is not exist")
-        fileGraphicRepository.deleteById(id)
-        return Result("fileGraphic are deleted")
-    }
+    /*    override fun delete(id: Long): Result {
+            fileGraphicRepository.findByIdOrNull(id) ?: throw FileGraphicNotException("fileGraphic id $id is not exist")
+            fileGraphicRepository.deleteById(id)
+            return Result("fileGraphic are deleted")
+        }*/
 
-    override fun getOne(id: Long): FileGraphicDtoResponse {
-        val existingFileGraphic = fileGraphicRepository.findByIdOrNull(id)
+    override fun getOne(id: Long): FileGraphicOneDtoResponse {
+        val fileGraphic = fileGraphicRepository.findByIdOrNull(id)
             ?: throw FileGraphicNotException("fileGraphic id $id is not exist")
-        return FileGraphicDtoResponse.toResponse(existingFileGraphic)
+        val fileGraphicTimeIds = fileGraphicTimeRepository.findAllGraphicTimesByFileGraphic(fileGraphic.id!!)
+        val fileGraphicTimes = graphicTimeRepository.findAllById(fileGraphicTimeIds)
+
+        return FileGraphicOneDtoResponse.toResponse(fileGraphic, fileGraphicTimes)
     }
 
     override fun getAll(
-        startDate: LocalDate,
-        endDate: LocalDate,
+        startDate: LocalDate?,
+        endDate: LocalDate?,
         status: FileStatus?,
         pageable: Pageable
     ): Page<FileGraphicDtoResponse> {
-        val response = if (status == null) {
-            fileGraphicRepository.findAllByLocalDateBetween(startDate, endDate, pageable)
-        } else {
-            fileGraphicRepository.findAllByLocalDateBetweenAndStatus(startDate, endDate, status, pageable)
-        }
-      return  response.map(FileGraphicDtoResponse.Companion::toResponse)
+
+
+        val response =
+            if (startDate != null && endDate != null && status != null) {
+                fileGraphicRepository.findAllByLocalDateBetweenAndStatus(startDate, endDate, status, pageable)
+            } else if (status == null && startDate != null && endDate != null) {
+                fileGraphicRepository.findAllByLocalDateBetween(startDate, endDate, pageable)
+            } else {
+                fileGraphicRepository.findAll(pageable)
+            }
+        return response.map(FileGraphicDtoResponse.Companion::toResponse)
     }
 
-    override fun changeStatus(id: Long, status: FileStatus): Result {
+    override fun changeStatus(id: Long, dto: FileGraphicStatusDto): Result {
         val existingFileGraphic = fileGraphicRepository.findByIdOrNull(id)
             ?: throw FileGraphicNotException("fileGraphic id $id is not exist")
-        
-        existingFileGraphic.status = status
+
+        existingFileGraphic.status = dto.status
         fileGraphicRepository.save(existingFileGraphic)
         return Result("status are saved successfully")
     }

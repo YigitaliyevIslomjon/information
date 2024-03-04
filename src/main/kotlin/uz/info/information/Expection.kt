@@ -4,6 +4,7 @@ package uz.info.information
 import org.springframework.http.HttpHeaders
 import org.springframework.http.HttpStatus
 import org.springframework.http.ResponseEntity
+import org.springframework.validation.FieldError
 import org.springframework.web.HttpMediaTypeNotSupportedException
 import org.springframework.web.bind.MethodArgumentNotValidException
 import org.springframework.web.bind.annotation.ControllerAdvice
@@ -37,10 +38,14 @@ class ExceptionControllerAdvice {
 
     @ExceptionHandler(MethodArgumentNotValidException::class)
     @ResponseStatus(HttpStatus.BAD_REQUEST)
-    fun handleValidationException(ex: MethodArgumentNotValidException): Map<String, String> {
-        println(ex.message)
-        val errors = ex.bindingResult.allErrors.map { error -> error.defaultMessage }
-        return mapOf("errors" to errors.joinToString(", "))
+    fun handleValidationExceptions(ex: MethodArgumentNotValidException): ResponseEntity<Map<String, String>> {
+        val errors = HashMap<String, String>()
+        ex.bindingResult.allErrors.forEach { error ->
+            val fieldName = (error as FieldError).field
+            val errorMessage = error.defaultMessage
+            errors[fieldName] = errorMessage ?: "Validation error"
+        }
+        return ResponseEntity(errors, HttpStatus.BAD_REQUEST)
     }
 
     @ExceptionHandler(AccessDeniedException::class)
@@ -60,6 +65,15 @@ abstract class BaseException(private val msg: String? = null) : RuntimeException
     abstract fun getModel(): ErrorMessageModel
 }
 
+
+
+class GraphicTimeDeletedException(msg: String) : BaseException(msg) {
+    override fun errorCode() = ErrorCode.GRAPHIC_TIME_DELETED
+    override fun getModel(): ErrorMessageModel {
+        return ErrorMessageModel(errorCode().code, message)
+    }
+}
+
 class UsernameExistException(msg: String) : BaseException(msg) {
     override fun errorCode() = ErrorCode.USERNAME_EXIST
     override fun getModel(): ErrorMessageModel {
@@ -73,9 +87,21 @@ class FileNotFoundException(msg: String) : BaseException(msg) {
         return ErrorMessageModel(errorCode().code, message)
     }
 }
-
+class FileAlreadyConnectedGraphicException(msg: String) : BaseException(msg) {
+    override fun errorCode() = ErrorCode.FILE_ALREADY_CONNECTED_GRAPHIC
+    override fun getModel(): ErrorMessageModel {
+        return ErrorMessageModel(errorCode().code, message)
+    }
+}
 class FileGraphicNotException(msg: String) : BaseException(msg) {
     override fun errorCode() = ErrorCode.FILE_GRAPHIC_NOT_FOUND
+    override fun getModel(): ErrorMessageModel {
+        return ErrorMessageModel(errorCode().code, message)
+    }
+}
+
+class GraphicTimeAlreadyExistException(msg: String) : BaseException(msg) {
+    override fun errorCode() = ErrorCode.GRAPHIC_TIME_ALREADY_EXIST
     override fun getModel(): ErrorMessageModel {
         return ErrorMessageModel(errorCode().code, message)
     }

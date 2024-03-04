@@ -5,28 +5,19 @@ import java.sql.Time
 import java.time.LocalDate
 import java.util.UUID
 
-
 @Entity(name = "users")
 class User(
-    @Column(nullable = false)
+    @Column(nullable = false, length = 50)
     val firstName: String,
-    @Column(nullable = false)
+    @Column(nullable = false, length = 50)
     val lastName: String,
     @Column(nullable = false)
     val password: String,
-    @Column(nullable = false, unique = true)
+    @Column(nullable = false, unique = true, length = 50)
     val username: String,
     @Column(nullable = false)
-    val roles: List<String> = listOf("ADMIN"),
-    @Id
-    @GeneratedValue(strategy = GenerationType.IDENTITY)
-    val id: Long? = null,
-)
-
-@Entity
-class GraphicTime(
-    @Column(nullable = false, unique = true)
-    var time: Time,
+    @Enumerated(EnumType.STRING)
+    val roles: List<Role> = listOf(Role.USER),
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     val id: Long? = null,
@@ -52,10 +43,21 @@ class FileGraphic(
     @Column(nullable = false)
     var title: String,
     @Column(nullable = false)
+    @Enumerated(EnumType.STRING)
     var status: FileStatus,
     @Column(nullable = false)
     var localDate: LocalDate,
     @OneToOne var fileAttachment: FileAttachment,
+    @Id
+    @GeneratedValue(strategy = GenerationType.IDENTITY)
+    val id: Long? = null,
+)
+
+@Entity
+class GraphicTime(
+    @Column(nullable = false, unique = true)
+    var time: Time,
+    var delete: Boolean  = false,
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     val id: Long? = null,

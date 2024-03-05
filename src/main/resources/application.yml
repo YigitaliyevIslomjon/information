@@ -1,0 +1,25 @@
+server:
+  port: 8080
+spring:
+  datasource:
+    password: 123
+    username: postgres
+    url: jdbc:postgresql://localhost:5432/information
+  jpa:
+    show-sql: true
+    hibernate:
+      ddl-auto: update
+    properties:
+      hibernate:
+        dialect=org:
+          hibernate:
+            dialect:
+              PostgreSQLDialect: org.hibernate.dialect.PostgreSQLDialect
+  servlet:
+    multipart:
+      enabled: true
+      file-size-threshold: 2KB
+      max-file-size: 200MB
+      max-request-size: 215MB
+
+saved-file-folder: 'uploads'
